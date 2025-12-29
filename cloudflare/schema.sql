@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name TEXT,
   email TEXT UNIQUE,
   password TEXT,
+  salt TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
