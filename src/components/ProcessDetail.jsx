@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
+const ProcessDetail = ({ process, onBack, onUpdate, userRole = 'admin' }) => {
+    const isAdmin = userRole === 'admin';
     const [activeTab, setActiveTab] = useState('Submission');
     const [localProcess, setLocalProcess] = useState({
         ...process,
@@ -9,31 +10,34 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
         notes: process.notes || ''
     });
 
-    // Pre-populate impact metrics if empty
+    // Populate default impact metrics for admin if empty
     useEffect(() => {
-        const defaultImpact = {
-            financial: [
-                { id: 'f1', name: 'Potential labor savings', unit: '$', baseline: '0', target: '0', value: 0 },
-                { id: 'f2', name: 'Cost of undetected errors', unit: '$', baseline: '0', target: '0', value: 0 }
-            ],
-            efficiency: [
-                { id: 'e1', name: 'Process turnaround time', unit: 'Days', baseline: '0', target: '0', value: 0 },
-                { id: 'e2', name: 'Manual effort reduction', unit: 'Hours', baseline: '0', target: '0', value: 0 }
-            ],
-            accuracy: [
-                { id: 'a1', name: 'Error reduction rate', unit: '%', baseline: '0', target: '0', value: 0 },
-                { id: 'a2', name: 'Zero-touch rate', unit: '%', baseline: '0', target: '0', value: 0 }
-            ]
-        };
-
-        if (Object.values(localProcess.impact).every(arr => arr.length === 0)) {
+        if (isAdmin && (!localProcess.impact || Object.values(localProcess.impact).every(arr => !arr || arr.length === 0))) {
+            const defaultImpact = {
+                financial: [
+                    { id: 'f1', name: 'Potential labor savings', unit: '$', baseline: '0', target: '0', value: 0 },
+                    { id: 'f2', name: 'Cost of undetected errors', unit: '$', baseline: '0', target: '0', value: 0 }
+                ],
+                efficiency: [
+                    { id: 'e1', name: 'Process turnaround time', unit: 'Days', baseline: '0', target: '0', value: 0 },
+                    { id: 'e2', name: 'Manual effort reduction', unit: 'Hours', baseline: '0', target: '0', value: 0 }
+                ],
+                accuracy: [
+                    { id: 'a1', name: 'Error reduction rate', unit: '%', baseline: '0', target: '0', value: 0 },
+                    { id: 'a2', name: 'Zero-touch rate', unit: '%', baseline: '0', target: '0', value: 0 }
+                ]
+            };
             setLocalProcess(prev => ({ ...prev, impact: defaultImpact }));
         }
-    }, []);
+    }, [isAdmin]);
 
-    const updateField = (field, val) => setLocalProcess(prev => ({ ...prev, [field]: val }));
+    const updateField = (field, val) => {
+        if (!isAdmin) return;
+        setLocalProcess(prev => ({ ...prev, [field]: val }));
+    };
 
     const updateImpact = (type, id, field, val) => {
+        if (!isAdmin) return;
         const updated = {
             ...localProcess.impact,
             [type]: localProcess.impact[type].map(m => m.id === id ? { ...m, [field]: val } : m)
@@ -42,6 +46,7 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
     };
 
     const addImpactMetric = (type) => {
+        if (!isAdmin) return;
         const newMetric = { id: Date.now(), name: 'New Metric', unit: '', baseline: '0', target: '0', value: 0 };
         setLocalProcess(prev => ({
             ...prev,
@@ -50,11 +55,13 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
     };
 
     const addSystem = () => {
+        if (!isAdmin) return;
         const newSys = { id: Date.now(), name: 'System Name', type: 'Cloud', access: 'API' };
         setLocalProcess(prev => ({ ...prev, systems_detail: [...prev.systems_detail, newSys] }));
     };
 
     const updateSystem = (id, field, val) => {
+        if (!isAdmin) return;
         setLocalProcess(prev => ({
             ...prev,
             systems_detail: prev.systems_detail.map(s => s.id === id ? { ...s, [field]: val } : s)
@@ -62,9 +69,8 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
     };
 
     const handleSave = () => {
-        // Calculate total potential value from financial impact
+        if (!isAdmin) return;
         const totalValue = localProcess.impact.financial.reduce((sum, m) => sum + (parseFloat(m.value) || 0), 0);
-
         onUpdate(process.id, {
             ...localProcess,
             potential_value: totalValue
@@ -153,7 +159,15 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                         <label style={{ fontSize: '0.8125rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Value Score</label>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             {['High', 'Medium', 'Low'].map(s => (
-                                                <button key={s} onClick={() => updateField('value_score', s)} className={localProcess.value_score === s ? 'btn-primary' : 'btn-secondary'} style={{ flex: 1, padding: '0.5rem' }}>{s}</button>
+                                                <button
+                                                    key={s}
+                                                    onClick={() => updateField('value_score', s)}
+                                                    className={localProcess.value_score === s ? 'btn-primary' : 'btn-secondary'}
+                                                    style={{ flex: 1, padding: '0.5rem', cursor: isAdmin ? 'pointer' : 'default', opacity: !isAdmin && localProcess.value_score !== s ? 0.3 : 1 }}
+                                                    disabled={!isAdmin}
+                                                >
+                                                    {s}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
@@ -161,18 +175,30 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                         <label style={{ fontSize: '0.8125rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Feasibility Score</label>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             {['High', 'Medium', 'Low'].map(s => (
-                                                <button key={s} onClick={() => updateField('feasibility_score', s)} className={localProcess.feasibility_score === s ? 'btn-primary' : 'btn-secondary'} style={{ flex: 1, padding: '0.5rem' }}>{s}</button>
+                                                <button
+                                                    key={s}
+                                                    onClick={() => updateField('feasibility_score', s)}
+                                                    className={localProcess.feasibility_score === s ? 'btn-primary' : 'btn-secondary'}
+                                                    style={{ flex: 1, padding: '0.5rem', cursor: isAdmin ? 'pointer' : 'default', opacity: !isAdmin && localProcess.feasibility_score !== s ? 0.3 : 1 }}
+                                                    disabled={!isAdmin}
+                                                >
+                                                    {s}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '0.8125rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Priority Signal</label>
-                                        <select value={localProcess.priority_signal} onChange={(e) => updateField('priority_signal', e.target.value)} style={inputStyle}>
-                                            <option value="">Select signal...</option>
-                                            <option>Champion Ready</option>
-                                            <option>Interested</option>
-                                            <option>Low Urgency</option>
-                                        </select>
+                                        {isAdmin ? (
+                                            <select value={localProcess.priority_signal} onChange={(e) => updateField('priority_signal', e.target.value)} style={inputStyle}>
+                                                <option value="">Select signal...</option>
+                                                <option>Champion Ready</option>
+                                                <option>Interested</option>
+                                                <option>Low Urgency</option>
+                                            </select>
+                                        ) : (
+                                            <div style={{ ...inputStyle, background: 'var(--surface-color)' }}>{localProcess.priority_signal || 'Pending Evaluation...'}</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -181,22 +207,30 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                 <div style={{ display: 'grid', gap: '1.5rem' }}>
                                     <div>
                                         <label style={{ fontSize: '0.8125rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Action Signal</label>
-                                        <select value={localProcess.action_signal} onChange={(e) => updateField('action_signal', e.target.value)} style={{ ...inputStyle, fontWeight: '700', color: 'var(--primary-color)' }}>
-                                            <option value="">Select action...</option>
-                                            <option>Pursue</option>
-                                            <option>Discovery</option>
-                                            <option>Deprioritize</option>
-                                            <option>Pass</option>
-                                        </select>
+                                        {isAdmin ? (
+                                            <select value={localProcess.action_signal} onChange={(e) => updateField('action_signal', e.target.value)} style={{ ...inputStyle, fontWeight: '700', color: 'var(--primary-color)' }}>
+                                                <option value="">Select action...</option>
+                                                <option>Pursue</option>
+                                                <option>Discovery</option>
+                                                <option>Deprioritize</option>
+                                                <option>Pass</option>
+                                            </select>
+                                        ) : (
+                                            <div style={{ ...inputStyle, fontWeight: '700', color: 'var(--primary-color)', background: 'var(--surface-color)' }}>{localProcess.action_signal || 'Pending Evaluation...'}</div>
+                                        )}
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '0.8125rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Analyst Recommendation</label>
-                                        <textarea
-                                            value={localProcess.recommendation}
-                                            onChange={(e) => updateField('recommendation', e.target.value)}
-                                            placeholder="Write the executive summary recommendation..."
-                                            style={{ ...inputStyle, height: '120px' }}
-                                        />
+                                        {isAdmin ? (
+                                            <textarea
+                                                value={localProcess.recommendation}
+                                                onChange={(e) => updateField('recommendation', e.target.value)}
+                                                placeholder="Write the executive summary recommendation..."
+                                                style={{ ...inputStyle, height: '120px' }}
+                                            />
+                                        ) : (
+                                            <div style={{ ...inputStyle, minHeight: '120px', background: 'var(--surface-color)', whiteSpace: 'pre-wrap' }}>{localProcess.recommendation || 'Our analysts are currently evaluating this process. Check back soon for a detailed recommendation.'}</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -211,7 +245,7 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                 <div key={type} className="card" style={{ padding: '0', overflow: 'hidden' }}>
                                     <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-color)' }}>
                                         <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '0.75rem' }}>{type} Impact</span>
-                                        <button onClick={() => addImpactMetric(type)} className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}>+ Add</button>
+                                        {isAdmin && <button onClick={() => addImpactMetric(type)} className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}>+ Add</button>}
                                     </div>
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
@@ -224,15 +258,30 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {localProcess.impact[type].map(m => (
+                                            {(localProcess.impact[type] || []).map(m => (
                                                 <tr key={m.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                    <td style={{ padding: '0.5rem 1.5rem' }}><input value={m.name} onChange={(e) => updateImpact(type, m.id, 'name', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }} /></td>
-                                                    <td style={{ padding: '0.5rem 1rem' }}><input value={m.unit} onChange={(e) => updateImpact(type, m.id, 'unit', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /></td>
-                                                    <td style={{ padding: '0.5rem 1rem' }}><input value={m.baseline} onChange={(e) => updateImpact(type, m.id, 'baseline', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /></td>
-                                                    <td style={{ padding: '0.5rem 1rem' }}><input value={m.target} onChange={(e) => updateImpact(type, m.id, 'target', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /></td>
-                                                    <td style={{ padding: '0.5rem 1.5rem', textAlign: 'right' }}><input value={m.value} onChange={(e) => updateImpact(type, m.id, 'value', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'right', fontWeight: '700' }} /></td>
+                                                    <td style={{ padding: '0.5rem 1.5rem' }}>
+                                                        {isAdmin ? <input value={m.name} onChange={(e) => updateImpact(type, m.id, 'name', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }} /> : <span style={{ fontSize: '0.875rem' }}>{m.name}</span>}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }}>
+                                                        {isAdmin ? <input value={m.unit} onChange={(e) => updateImpact(type, m.id, 'unit', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /> : <span style={{ fontSize: '0.875rem' }}>{m.unit}</span>}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }}>
+                                                        {isAdmin ? <input value={m.baseline} onChange={(e) => updateImpact(type, m.id, 'baseline', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /> : <span style={{ fontSize: '0.875rem' }}>{m.baseline}</span>}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }}>
+                                                        {isAdmin ? <input value={m.target} onChange={(e) => updateImpact(type, m.id, 'target', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'center' }} /> : <span style={{ fontSize: '0.875rem' }}>{m.target}</span>}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 1.5rem', textAlign: 'right' }}>
+                                                        {isAdmin ? <input value={m.value} onChange={(e) => updateImpact(type, m.id, 'value', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0', textAlign: 'right', fontWeight: '700' }} /> : <span style={{ fontSize: '0.875rem', fontWeight: '700' }}>{m.value}</span>}
+                                                    </td>
                                                 </tr>
                                             ))}
+                                            {!isAdmin && (!localProcess.impact[type] || localProcess.impact[type].length === 0) && (
+                                                <tr>
+                                                    <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Analysts haven't calculated {type} impact yet.</td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -246,7 +295,7 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-color)' }}>
                                 <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '0.75rem' }}>System Landscape</span>
-                                <button onClick={addSystem} className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}>+ Add System</button>
+                                {isAdmin && <button onClick={addSystem} className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}>+ Add System</button>}
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
@@ -259,30 +308,42 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
                                 <tbody>
                                     {(localProcess.systems_detail || []).map(sys => (
                                         <tr key={sys.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '0.75rem 1.5rem' }}><input value={sys.name} onChange={(e) => updateSystem(sys.id, 'name', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }} /></td>
-                                            <td style={{ padding: '0.75rem 1rem' }}>
-                                                <select value={sys.type} onChange={(e) => updateSystem(sys.id, 'type', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }}>
-                                                    <option>Cloud / SaaS</option>
-                                                    <option>Legacy Desktop</option>
-                                                    <option>Mainframe / Green Screen</option>
-                                                    <option>Excel / Local File</option>
-                                                </select>
+                                            <td style={{ padding: '0.75rem 1.5rem' }}>
+                                                {isAdmin ? <input value={sys.name} onChange={(e) => updateSystem(sys.id, 'name', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }} /> : <span style={{ fontSize: '0.875rem' }}>{sys.name}</span>}
                                             </td>
                                             <td style={{ padding: '0.75rem 1rem' }}>
-                                                <select value={sys.access} onChange={(e) => updateSystem(sys.id, 'access', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }}>
-                                                    <option>API Available</option>
-                                                    <option>DB Access</option>
-                                                    <option>UI / Surface Only</option>
-                                                </select>
+                                                {isAdmin ? (
+                                                    <select value={sys.type} onChange={(e) => updateSystem(sys.id, 'type', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }}>
+                                                        <option>Cloud / SaaS</option>
+                                                        <option>Legacy Desktop</option>
+                                                        <option>Mainframe / Green Screen</option>
+                                                        <option>Excel / Local File</option>
+                                                    </select>
+                                                ) : <span style={{ fontSize: '0.875rem' }}>{sys.type}</span>}
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                {isAdmin ? (
+                                                    <select value={sys.access} onChange={(e) => updateSystem(sys.id, 'access', e.target.value)} style={{ ...inputStyle, border: 'none', padding: '0' }}>
+                                                        <option>API Available</option>
+                                                        <option>DB Access</option>
+                                                        <option>UI / Surface Only</option>
+                                                    </select>
+                                                ) : <span style={{ fontSize: '0.875rem' }}>{sys.access}</span>}
                                             </td>
                                         </tr>
                                     ))}
+                                    {!isAdmin && (localProcess.systems_detail || []).length === 0 && (
+                                        <tr>
+                                            <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Analysts haven't documented the system landscape yet.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 );
             case 'Notes':
+                if (!isAdmin) return null;
                 return (
                     <div className="animate-fade-in">
                         <div className="card" style={{ padding: '2rem' }}>
@@ -300,32 +361,37 @@ const AdminProcessDetail = ({ process, onBack, onUpdate }) => {
         }
     };
 
+    const tabs = ['Submission', 'Scoring', 'Impact', 'Systems'];
+    if (isAdmin) tabs.push('Notes');
+
     return (
         <div className="container" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <div>
                     <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '1rem', fontWeight: '700', fontSize: '0.875rem' }}>
-                        ← Back to Master View
+                        ← Back to {isAdmin ? 'Master View' : 'Dashboard'}
                     </button>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-0.04em', lineHeight: '1' }}>{localProcess.name}</h1>
                     <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>{localProcess.company} · Scoped on {new Date(localProcess.submitted_at).toLocaleDateString()}</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <select
-                        value={localProcess.status}
-                        onChange={(e) => updateField('status', e.target.value)}
-                        style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'white', border: '1px solid var(--border-color)', fontWeight: '700', outline: 'none' }}
-                    >
-                        <option>New</option>
-                        <option>Under Review</option>
-                        <option>Completed</option>
-                    </select>
-                    <button onClick={handleSave} className="btn-primary" style={{ padding: '0.75rem 1.5rem' }}>Save Changes</button>
-                </div>
+                {isAdmin && (
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <select
+                            value={localProcess.status}
+                            onChange={(e) => updateField('status', e.target.value)}
+                            style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'white', border: '1px solid var(--border-color)', fontWeight: '700', outline: 'none' }}
+                        >
+                            <option>New</option>
+                            <option>Under Review</option>
+                            <option>Completed</option>
+                        </select>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.75rem 1.5rem' }}>Save Changes</button>
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid var(--border-color)', marginBottom: '2rem' }}>
-                {['Submission', 'Scoring', 'Impact', 'Systems', 'Notes'].map(tab => (
+                {tabs.map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -362,4 +428,4 @@ const DetailRow = ({ label, value }) => (
     </div>
 );
 
-export default AdminProcessDetail;
+export default ProcessDetail;

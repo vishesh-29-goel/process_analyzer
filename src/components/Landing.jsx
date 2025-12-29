@@ -44,24 +44,7 @@ const Landing = ({ onStart }) => {
                 top: '1.5rem'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                    }}>
-                        <div style={{
-                            width: '14px',
-                            height: '14px',
-                            borderRadius: '3px',
-                            background: 'white',
-                            transform: 'rotate(45deg)'
-                        }} />
-                    </div>
+                    <img src="/pace-logo.png" alt="Pace Logo" style={{ height: '32px', width: 'auto' }} />
                     <span style={{
                         fontWeight: '800',
                         fontSize: '1.5rem',
@@ -125,8 +108,11 @@ const Landing = ({ onStart }) => {
                     </div>
 
                     {/* Dashboard Preview Hint */}
-                    <div className="gradient-text" style={{ fontSize: '1.5rem', fontWeight: '900', letterSpacing: '-0.05em' }}>
-                        Process Analyzer
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                        <img src="/pace-logo.png" alt="Pace Logo" style={{ height: '48px', width: 'auto' }} />
+                        <span className="gradient-text" style={{ fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-0.05em' }}>
+                            Pace
+                        </span>
                     </div>
                     <div className="animate-float" style={{ marginTop: '5rem', opacity: 0.8 }}>
                         <div className="glass" style={{
@@ -143,7 +129,7 @@ const Landing = ({ onStart }) => {
                                 ))}
                             </div>
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                                Leading enterprises trust Pace Analyser
+                                Leading enterprises trust Pace
                             </span>
                         </div>
                     </div>
@@ -160,7 +146,7 @@ const Landing = ({ onStart }) => {
                 zIndex: 1
             }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>© 2025 Pace Analyser. Build for efficiency.</span>
+                    <span>© 2025 Pace. Build for efficiency.</span>
                     <div style={{ display: 'flex', gap: '2rem' }}>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>

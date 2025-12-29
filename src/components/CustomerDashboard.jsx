@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CustomerDashboard = ({ onNewProcess, processes }) => {
+const CustomerDashboard = ({ onNewProcess, processes, onViewProcess }) => {
     const getStatusStyles = (status) => {
         switch (status) {
             case 'Completed': return { bg: '#ecfdf5', color: '#059669', border: '#10b98120' };
@@ -19,8 +19,9 @@ const CustomerDashboard = ({ onNewProcess, processes }) => {
                 marginBottom: '4rem'
             }}>
                 <div>
-                    <div className="badge" style={{ background: 'var(--secondary-color)', color: 'white', marginBottom: '1rem' }}>
-                        Process Analyzer
+                    <div className="badge" style={{ background: 'var(--secondary-color)', color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <img src="/pace-logo.png" alt="" style={{ height: '14px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                        Pace
                     </div>
                     <h1 style={{ fontSize: '3rem', fontWeight: '900', letterSpacing: '-0.04em', lineHeight: '1' }}>
                         Your Automation <span className="gradient-text">Insights</span>
@@ -70,7 +71,17 @@ const CustomerDashboard = ({ onNewProcess, processes }) => {
                             {processes.map((proc) => {
                                 const status = getStatusStyles(proc.status);
                                 return (
-                                    <tr key={proc.id} className="table-row" style={{ borderBottom: '1px solid var(--border-color)', transition: 'all 0.2s ease' }}>
+                                    <tr
+                                        key={proc.id}
+                                        onClick={() => onViewProcess(proc)}
+                                        style={{
+                                            borderBottom: '1px solid var(--border-color)',
+                                            transition: 'all 0.2s',
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-color)'}
+                                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                    >
                                         <td style={{ padding: '1.5rem 2rem' }}>
                                             <div>
                                                 <div style={{ fontWeight: '800', color: 'var(--text-primary)', fontSize: '1rem' }}>{proc.name}</div>
@@ -122,11 +133,6 @@ const CustomerDashboard = ({ onNewProcess, processes }) => {
                     </div>
                 )}
             </div>
-
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                .table-row:hover { background-color: rgba(37, 99, 235, 0.03); cursor: pointer; }
-            `}} />
         </div>
     );
 };

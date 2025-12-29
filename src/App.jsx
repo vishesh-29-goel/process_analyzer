@@ -5,7 +5,7 @@ import Login from './components/Login';
 import CustomerDashboard from './components/CustomerDashboard';
 import ProcessSubmissionForm from './components/ProcessSubmissionForm';
 import AdminDashboard from './components/AdminDashboard';
-import AdminProcessDetail from './components/AdminProcessDetail';
+import ProcessDetail from './components/ProcessDetail';
 
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8787/api'
@@ -149,7 +149,7 @@ function App() {
 
   const handleViewProcess = (proc) => {
     setSelectedProcess(proc);
-    setView('admin-detail');
+    setView(user.role === 'admin' ? 'admin-detail' : 'customer-detail');
   };
 
   const handleLogout = () => {
@@ -193,6 +193,7 @@ function App() {
         <CustomerDashboard
           processes={processes.filter(p => p.user_id === user?.id || user?.role === 'admin')}
           onNewProcess={() => setView('submission-wizard')}
+          onViewProcess={handleViewProcess}
         />
       )}
 
@@ -208,10 +209,19 @@ function App() {
       )}
 
       {view === 'admin-detail' && (
-        <AdminProcessDetail
+        <ProcessDetail
           process={processes.find(p => p.id === selectedProcess?.id)}
           onBack={() => setView('admin-dashboard')}
           onUpdate={handleUpdateProcess}
+          userRole="admin"
+        />
+      )}
+
+      {view === 'customer-detail' && (
+        <ProcessDetail
+          process={processes.find(p => p.id === selectedProcess?.id)}
+          onBack={() => setView('customer-dashboard')}
+          userRole="customer"
         />
       )}
     </div>
