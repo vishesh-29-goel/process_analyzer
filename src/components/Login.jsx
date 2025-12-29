@@ -11,9 +11,23 @@ const Login = ({ onLogin, onBack, isAdminLogin = false }) => {
     const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:8787/api'
-        : '/api';
+    const API_URL = (() => {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:8787/api';
+        }
+        // Support Coder-style port subdomains (e.g., 5173--workspace--user.coder...)
+        if (hostname.includes('coder-live.zamp.dev')) {
+            const parts = hostname.split('.');
+            const firstPart = parts[0];
+            if (firstPart.includes('--')) {
+                // Replaces the port part (before the first --) with 8787
+                const newFirstPart = firstPart.replace(/^\d+/, '8787');
+                return `https://${newFirstPart}.${parts.slice(1).join('.')}/api`;
+            }
+        }
+        return '/api';
+    })();
 
     useEffect(() => {
         if (isAdminLogin) {
