@@ -1,0 +1,11 @@
+name = "pace-api"
+main = "cloudflare/worker.js"
+compatibility_date = "2024-12-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pace_db"
+database_id = "eaf1dcbc-d89b-4282-b152-878cf5a23e10"
+
+[observability]
+enabled = true

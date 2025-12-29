@@ -1,0 +1,221 @@
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import Landing from './components/Landing';
+import Login from './components/Login';
+import CustomerDashboard from './components/CustomerDashboard';
+import ProcessSubmissionForm from './components/ProcessSubmissionForm';
+import AdminDashboard from './components/AdminDashboard';
+import AdminProcessDetail from './components/AdminProcessDetail';
+
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8787/api'
+  : '/api'; // In production, the worker will be on the same domain or proxied
+
+function App() {
+  const [view, setView] = useState('landing');
+  const [user, setUser] = useState(null);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [selectedProcess, setSelectedProcess] = useState(null);
+  const [processes, setProcesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUser();
+
+    // Check for admin entry point
+    if (window.location.pathname === '/admin' && !user) {
+      setIsAdminLogin(true);
+      setView('login');
+      // Update browser history so refresh doesn't immediately go back to login unless on /admin
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
+
+  // Protected View Guard
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      const adminViews = ['admin-dashboard', 'admin-detail'];
+      if (adminViews.includes(view)) {
+        console.warn(`Unauthorized access attempt to ${view} by customer ${user.email}`);
+        setView('customer-dashboard');
+      }
+    }
+  }, [view, user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProcesses();
+    }
+  }, [user]);
+
+  async function checkUser() {
+    const savedUser = localStorage.getItem('pace_user');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+
+      // Enforce correct initial view based on role
+      if (parsedUser.role === 'admin') {
+        setView(prev => prev === 'login' || prev === 'landing' ? 'admin-dashboard' : prev);
+      } else {
+        setView(prev => prev === 'login' || prev === 'landing' ? 'customer-dashboard' : prev);
+      }
+    }
+    setLoading(false);
+  }
+
+  async function fetchProcesses() {
+    if (!user) return;
+    try {
+      const resp = await fetch(`${API_URL}/processes`, {
+        headers: {
+          'X-User-Id': user.id,
+          'X-User-Role': user.role
+        }
+      });
+      const data = await resp.json();
+      const mappedData = data.map(p => ({
+        ...p,
+        submitted: p.submitted_at ? (p.submitted_at.includes('T') ? p.submitted_at.split('T')[0] : p.submitted_at.split(' ')[0]) : 'N/A'
+      }));
+      setProcesses(mappedData);
+    } catch (error) {
+      console.error('Error fetching processes:', error);
+    }
+  }
+
+  const handleUpdateProcess = async (id, updatedData) => {
+    if (!user) return;
+    try {
+      const resp = await fetch(`${API_URL}/processes/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user.id,
+          'X-User-Role': user.role
+        },
+        body: JSON.stringify(updatedData)
+      });
+
+      if (!resp.ok) throw new Error('Update failed');
+      setProcesses(prev => prev.map(p => p.id === id ? { ...p, ...updatedData } : p));
+    } catch (error) {
+      console.error('Error updating process:', error);
+      alert('Error updating process. Check console.');
+    }
+  };
+
+  const handleProcessSubmit = async (data) => {
+    if (!user) return;
+
+    // Map 'notes' from form to 'description' for backend
+    const newProcess = {
+      ...data,
+      description: data.notes || '',
+      company: user.company_name || user.company || 'Acme Corp',
+      user_id: user.id || 'anonymous',
+      status: 'New',
+      recommendation: '-',
+      impact: { financial: [], efficiency: [], accuracy: [] },
+      scoring: { fit: 0, complexity: 0, value: 0 },
+      systems: []
+    };
+
+    try {
+      const resp = await fetch(`${API_URL}/processes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user.id,
+          'X-User-Role': user.role
+        },
+        body: JSON.stringify(newProcess)
+      });
+
+      const result = await resp.json();
+
+      if (resp.ok && result.success) {
+        setProcesses(prev => [{ ...newProcess, id: result.id, submitted: new Date().toISOString().split('T')[0] }, ...prev]);
+        setView(user.role === 'admin' ? 'admin-dashboard' : 'customer-dashboard');
+        alert('Process submitted successfully!');
+      } else {
+        throw new Error(result.error || 'Server returned an error');
+      }
+    } catch (error) {
+      console.error('Error submitting process:', error);
+      alert(`Failed to submit process: ${error.message}`);
+    }
+  };
+
+  const handleViewProcess = (proc) => {
+    setSelectedProcess(proc);
+    setView('admin-detail');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('pace_user');
+    setView('landing');
+  };
+
+  if (loading) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading Pace...</div>;
+
+  return (
+    <div className="app">
+      {view !== 'landing' && view !== 'login' && <Navbar user={user} onLogout={handleLogout} setView={setView} />}
+
+      {view === 'landing' && (
+        <Landing
+          onStart={() => setView('login')}
+          onAdminLogin={() => setView('login')}
+        />
+      )}
+
+      {view === 'login' && (
+        <Login
+          isAdminLogin={isAdminLogin}
+          onLogin={(userData) => {
+            setUser(userData);
+            const targetView = (isAdminLogin && userData.role === 'admin')
+              ? 'admin-dashboard'
+              : 'customer-dashboard';
+            setIsAdminLogin(false);
+            setView(targetView);
+          }}
+          onBack={() => {
+            setIsAdminLogin(false);
+            setView('landing');
+          }}
+        />
+      )}
+
+      {view === 'customer-dashboard' && (
+        <CustomerDashboard
+          processes={processes.filter(p => p.user_id === user?.id || user?.role === 'admin')}
+          onNewProcess={() => setView('submission-wizard')}
+        />
+      )}
+
+      {view === 'submission-wizard' && (
+        <ProcessSubmissionForm onSubmit={handleProcessSubmit} onCancel={() => setView('customer-dashboard')} />
+      )}
+
+      {view === 'admin-dashboard' && (
+        <AdminDashboard
+          processes={processes}
+          onViewProcess={handleViewProcess}
+        />
+      )}
+
+      {view === 'admin-detail' && (
+        <AdminProcessDetail
+          process={processes.find(p => p.id === selectedProcess?.id)}
+          onBack={() => setView('admin-dashboard')}
+          onUpdate={handleUpdateProcess}
+        />
+      )}
+    </div>
+  );
+}
+
+export default App;
