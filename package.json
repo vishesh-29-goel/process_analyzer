@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "npx wrangler dev --local --port 8888",
-    "dev:remote": "npx wrangler dev --remote --port 8888",
+    "dev:backend": "npx wrangler dev --remote --port 8888",
+    "dev:local": "npx wrangler dev --local --port 8888",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
-    "dev:all:remote": "concurrently \"npm run dev\" \"npm run dev:remote\"",
+    "dev:all:local": "concurrently \"npm run dev\" \"npm run dev:local\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
