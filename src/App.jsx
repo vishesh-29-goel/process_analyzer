@@ -10,19 +10,19 @@ import ProcessDetail from './components/ProcessDetail';
 const API_URL = (() => {
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8787/api';
+    return 'http://localhost:8888/api';
   }
   // Support Coder-style port subdomains (e.g., 5173--workspace--user.coder...)
   if (hostname.includes('coder-live.zamp.dev')) {
     const parts = hostname.split('.');
     const firstPart = parts[0];
     if (firstPart.includes('--')) {
-      // Replaces the port part (before the first --) with 8787
-      const newFirstPart = firstPart.replace(/^\d+/, '8787');
+      // Replaces the port part (before the first --) with 8888
+      const newFirstPart = firstPart.replace(/^\d+/, '8888');
       return `https://${newFirstPart}.${parts.slice(1).join('.')}/api`;
     }
   }
-  return '/api';
+  return 'https://processanalyzer.processeval-zamp.workers.dev/api';
 })();
 
 function App() {

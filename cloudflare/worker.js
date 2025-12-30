@@ -16,6 +16,11 @@ export default {
         }
 
         try {
+            // Root path handler for health check
+            if (path === '/' || path === '') {
+                return Response.json({ status: 'running', service: 'Pace API', version: '1.0.0' }, { headers: corsHeaders });
+            }
+
             // Helper to get user context from headers (simplified for demo)
             const userId = request.headers.get('X-User-Id');
             const userRole = request.headers.get('X-User-Role') || 'customer';
@@ -112,8 +117,8 @@ export default {
                         automation_goals, challenges, bottleneck_effect, importance,
                         documentation_status, explainability, consistency_rate,
                         systems_count, systems_type, comm_channels,
-                        status, user_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?)
+                        status, user_id, impact, systems_detail
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?, ?)
                 `).bind(
                     id,
                     body.name,
@@ -136,7 +141,9 @@ export default {
                     body.systems_count,
                     body.systems_type,
                     JSON.stringify(body.comm_channels || []),
-                    targetUserId
+                    targetUserId,
+                    JSON.stringify(body.impact || { financial: [], efficiency: [], accuracy: [] }),
+                    JSON.stringify(body.systems_detail || [])
                 ).run();
                 return Response.json({ success: true, id }, { headers: corsHeaders });
             }

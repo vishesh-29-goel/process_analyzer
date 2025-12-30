@@ -22,9 +22,7 @@ const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
         systems_type: '',
         comm_channels: [],
         industry: '',
-        notes: '',
-        importance: '',
-        explainability: ''
+        notes: ''
     });
 
     const handleNext = () => {
