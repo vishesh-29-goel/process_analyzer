@@ -1,36 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { calculateImpact, getProcessTotals } from '../utils/CalculationEngine';
 
-const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
+const ProcessSubmissionForm = ({ API_URL, onSubmit, onCancel }) => {
     const [step, setStep] = useState(1);
+    const [settings, setSettings] = useState({});
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        industry: '',
         team_activity: '',
         work_type: '',
-        team_size: '',
-        time_spent: '',
-        monthly_volume: '',
-        frequency: '',
+
+        // Scale & Effort
+        team_size: '1 person',
+        time_spent: 'Under 25%',
+        monthly_volume: 'Under 500',
+        frequency: 'Daily',
+
+        // Impact Logic Inputs
+        hours_per_cycle: '0',
+        error_count_monthly: '0',
+
+        // Qualification
         automation_goals: '',
         challenges: [],
-        bottleneck_effect: '',
-        importance: '',
-        documentation_status: '',
-        explainability: '',
-        consistency_rate: '',
-        systems_count: '',
-        systems_type: '',
+        bottleneck_effect: 'Self-contained',
+        importance: 'Medium',
+
+        // Process DNA
+        documentation_status: 'No documentation',
+        explainability: 'Simple Rules (IF/THEN)',
+        consistency_rate: 'Variable (50-70%)',
+        systems_count: '1 system',
+        systems_type: 'All Cloud / SaaS',
         comm_channels: [],
-        industry: '',
+
+        // Granular Data Structures
+        impact: {
+            financial: [],
+            efficiency: [],
+            accuracy: []
+        },
+        systems_detail: [],
+        integration_method: 'Manual',
         notes: ''
     });
+
+    // Fetch settings for calculations
+    useEffect(() => {
+        fetch(`${API_URL}/settings`)
+            .then(res => res.json())
+            .then(data => setSettings(data))
+            .catch(err => console.error('Failed to load settings', err));
+    }, [API_URL]);
+
+    const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
     const handleNext = () => {
         if (step === 1 && (!formData.name || !formData.team_activity)) {
             alert('Please provide a name and activity area.');
             return;
         }
-        setStep(s => Math.min(s + 1, 5));
+        setStep(s => Math.min(s + 6, 6)); // We'll have 6 steps now
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -39,96 +70,46 @@ const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+    // --- Dynamic Calculation Logic ---
+    const runCalculations = () => {
+        const hourlyRate = parseFloat(settings.hourly_rate || 45);
+        const errorCost = parseFloat(settings.error_cost || 150);
 
-    const toggleArrayField = (field, value) => {
-        setFormData(prev => {
-            const current = prev[field] || [];
-            const next = current.includes(value)
-                ? current.filter(item => item !== value)
-                : [...current, value];
-            return { ...prev, [field]: next };
-        });
+        // Map common inputs to impact metrics
+        const laborValue = parseFloat(formData.hours_per_cycle) * (formData.frequency === 'Daily' ? 20 : 4) * hourlyRate * 12;
+        const errorValue = parseFloat(formData.error_count_monthly) * errorCost * 12;
+
+        return {
+            labor: laborValue,
+            error: errorValue,
+            total: laborValue + errorValue
+        };
     };
 
-    const inputStyle = {
-        width: '100%',
-        padding: '0.875rem 1rem',
-        borderRadius: '10px',
-        background: 'rgba(255, 255, 255, 0.9)',
-        border: '1px solid var(--border-color)',
-        color: 'var(--text-primary)',
-        fontSize: '0.9375rem',
-        outline: 'none',
-        transition: 'all 0.2s',
-        marginTop: '0.5rem'
-    };
-
-    const labelStyle = {
-        display: 'block',
-        fontWeight: '700',
-        color: 'var(--text-primary)',
-        fontSize: '0.8125rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.02em'
-    };
-
-    const stepInfo = [
-        { title: 'Process', desc: 'Identity' },
-        { title: 'Scale', desc: 'Effort' },
-        { title: 'Priority', desc: 'Pain' },
-        { title: 'Details', desc: 'Technical' },
-        { title: 'Submit', desc: 'Review' }
-    ];
+    const totals = runCalculations();
 
     const renderStep = () => {
         switch (step) {
             case 1:
                 return (
                     <div className="animate-fade-in-up">
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em' }}>The <span className="gradient-text">Identity</span></h2>
-                            <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Define the core scope of your process.</p>
+                        <div className="form-group">
+                            <label className="form-label">Process Identity</label>
+                            <input className="form-input" value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="e.g. Accounts Payable Reconciliation" />
                         </div>
-                        <div style={{ display: 'grid', gap: '1.5rem' }}>
-                            <div>
-                                <label style={labelStyle}>Process Name</label>
-                                <input type="text" value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="e.g. Accounts Payable Reconciliation" style={inputStyle} />
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Industry</label>
-                                <select value={formData.industry} onChange={e => updateField('industry', e.target.value)} style={inputStyle}>
-                                    <option value="">Select industry...</option>
-                                    <option>Financial Services</option>
-                                    <option>Healthcare</option>
-                                    <option>Retail & E-commerce</option>
-                                    <option>Manufacturing</option>
-                                    <option>Tech & Software</option>
-                                    <option>Professional Services</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Functional Area</label>
-                                <select value={formData.team_activity} onChange={e => updateField('team_activity', e.target.value)} style={inputStyle}>
-                                    <option value="">Choose an area...</option>
-                                    <option>Data Entry / Processing</option>
-                                    <option>Document Management</option>
-                                    <option>Approvals & Workflows</option>
-                                    <option>Reconciliation / Auditing</option>
-                                    <option>Reporting & Analytics</option>
-                                    <option>Coordination & Communication</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Work Type (What does the team handle?)</label>
-                                <select value={formData.work_type} onChange={e => updateField('work_type', e.target.value)} style={inputStyle}>
-                                    <option value="">Select data type...</option>
-                                    <option>System-to-System Data</option>
-                                    <option>Standard Documents (Forms/Invoices)</option>
-                                    <option>Complex Documents (Contracts/Unstructured)</option>
-                                    <option>Email-driven Coordination</option>
-                                    <option>Mixed / Hybrid</option>
-                                </select>
+                        <div className="form-group">
+                            <label className="form-label">Industry</label>
+                            <select className="form-input" value={formData.industry} onChange={e => updateField('industry', e.target.value)}>
+                                <option value="">Select industry...</option>
+                                <option>Financial Services</option><option>Healthcare</option><option>Retail</option><option>Software</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">What is the primary activity?</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {['Data Entry', 'Approvals', 'Reconciliation', 'Reporting', 'Customer Support'].map(a => (
+                                    <button key={a} onClick={() => updateField('team_activity', a)} className={`chip ${formData.team_activity === a ? 'active' : ''}`}>{a}</button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -136,216 +117,73 @@ const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
             case 2:
                 return (
                     <div className="animate-fade-in-up">
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em' }}>Scale & <span className="gradient-text">Effort</span></h2>
-                            <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Quantify the human effort involved.</p>
+                        <label className="form-label">Effort Estimation</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.7rem' }}>Hours spent per cycle</label>
+                                <input type="number" className="form-input" value={formData.hours_per_cycle} onChange={e => updateField('hours_per_cycle', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.7rem' }}>Frequency</label>
+                                <select className="form-input" value={formData.frequency} onChange={e => updateField('frequency', e.target.value)}>
+                                    <option>Daily</option><option>Weekly</option><option>Monthly</option>
+                                </select>
+                            </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div>
-                                <label style={labelStyle}>Team Size</label>
-                                <select value={formData.team_size} onChange={e => updateField('team_size', e.target.value)} style={inputStyle}>
-                                    <option value="">Headcount...</option>
-                                    <option>1 person</option>
-                                    <option>2-5 people</option>
-                                    <option>6-15 people</option>
-                                    <option>16-50 people</option>
-                                    <option>50+ people</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Individual Time Spent</label>
-                                <select value={formData.time_spent} onChange={e => updateField('time_spent', e.target.value)} style={inputStyle}>
-                                    <option value="">% of day...</option>
-                                    <option>Under 25%</option>
-                                    <option>25-50%</option>
-                                    <option>50-75%</option>
-                                    <option>Over 75%</option>
-                                </select>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={labelStyle}>Monthly Volume (Transactions/Events)</label>
-                                <select value={formData.monthly_volume} onChange={e => updateField('monthly_volume', e.target.value)} style={inputStyle}>
-                                    <option value="">Select volume...</option>
-                                    <option>Under 500</option>
-                                    <option>500 - 2,000</option>
-                                    <option>2,000 - 10,000</option>
-                                    <option>10,000 - 50,000</option>
-                                    <option>Over 50,000</option>
-                                </select>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={labelStyle}>Execution Frequency</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                    {['Continuous', 'Daily', 'Weekly', 'Rarely'].map(f => (
-                                        <button
-                                            key={f}
-                                            onClick={() => updateField('frequency', f)}
-                                            style={{
-                                                padding: '0.75rem',
-                                                borderRadius: '8px',
-                                                border: formData.frequency === f ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                                background: formData.frequency === f ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                                                color: formData.frequency === f ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {f}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="form-group">
+                            <label className="form-label">Estimated Monthly Errors</label>
+                            <input type="number" className="form-input" value={formData.error_count_monthly} onChange={e => updateField('error_count_monthly', e.target.value)} />
+                        </div>
+                        <div className="glass" style={{ padding: '1rem', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Live Impact Estimation:</p>
+                            <h3 style={{ fontSize: '1.5rem', marginTop: '0.25rem' }}>{settings.currency_symbol || '$'}{totals.total.toLocaleString()}<span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}> / year</span></h3>
                         </div>
                     </div>
                 );
             case 3:
                 return (
                     <div className="animate-fade-in-up">
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em' }}>Pain & <span className="gradient-text">Priority</span></h2>
-                            <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Why is this a candidate for automation?</p>
-                        </div>
-                        <div style={{ display: 'grid', gap: '1.5rem' }}>
-                            <div>
-                                <label style={labelStyle}>Primary Goal</label>
-                                <select value={formData.automation_goals} onChange={e => updateField('automation_goals', e.target.value)} style={inputStyle}>
-                                    <option value="">Select primary goal...</option>
-                                    <option>Reduce Costs</option>
-                                    <option>Increase Speed</option>
-                                    <option>Reduce Errors</option>
-                                    <option>Handle Higher Volume</option>
-                                    <option>Improve Experience</option>
-                                    <option>Compliance / Audit Trail</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Current Challenges (Multi-select)</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                    {['Too Slow', 'High Error Rate', 'Volume Issues', 'Key Person Risk', 'Compliance Risk', 'No Visibility'].map(c => (
-                                        <div
-                                            key={c}
-                                            onClick={() => toggleArrayField('challenges', c)}
-                                            style={{
-                                                padding: '0.75rem',
-                                                borderRadius: '8px',
-                                                border: formData.challenges.includes(c) ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                                background: formData.challenges.includes(c) ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8125rem',
-                                                fontWeight: '600',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem'
-                                            }}
-                                        >
-                                            <div style={{ width: '14px', height: '14px', border: '1px solid var(--primary-color)', borderRadius: '3px', background: formData.challenges.includes(c) ? 'var(--primary-color)' : 'transparent' }} />
-                                            {c}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Team Bottleneck Level</label>
-                                <select value={formData.bottleneck_effect} onChange={e => updateField('bottleneck_effect', e.target.value)} style={inputStyle}>
-                                    <option value="">Select impact...</option>
-                                    <option>Self-contained</option>
-                                    <option>Minor delays to others</option>
-                                    <option>Regular delays / Bottleneck</option>
-                                    <option>Major organization blocker</option>
-                                </select>
-                            </div>
+                        <label className="form-label">Challenges & Pain Points</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {['Too Slow', 'High Error Rate', 'Scalability Issue', 'Compliance Risk', 'Key Person Risk', 'No Visibility'].map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => {
+                                        const next = formData.challenges.includes(c) ? formData.challenges.filter(x => x !== c) : [...formData.challenges, c];
+                                        updateField('challenges', next);
+                                    }}
+                                    className={`chip ${formData.challenges.includes(c) ? 'active' : ''}`}
+                                >
+                                    {c}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 );
             case 4:
                 return (
                     <div className="animate-fade-in-up">
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em' }}>Process <span className="gradient-text">DNA</span></h2>
-                            <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Technical details for feasibility analysis.</p>
+                        <label className="form-label">System Landscape (Advanced)</label>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.7rem' }}>Number of systems</label>
+                            <select className="form-input" value={formData.systems_count} onChange={e => updateField('systems_count', e.target.value)}>
+                                <option>1 system</option><option>2-3 systems</option><option>4+ systems</option>
+                            </select>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div>
-                                <label style={labelStyle}>Documentation Status</label>
-                                <select value={formData.documentation_status} onChange={e => updateField('documentation_status', e.target.value)} style={inputStyle}>
-                                    <option value="">Select status...</option>
-                                    <option>Up to date</option>
-                                    <option>Outdated</option>
-                                    <option>Tribal Knowledge Only</option>
-                                    <option>No documentation</option>
-                                </select>
+                        <div className="form-group">
+                            <label className="form-label">Primary System Architecture</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {['Cloud / SaaS', 'Legacy / On-Prem', 'Hybrid'].map(t => (
+                                    <button key={t} onClick={() => updateField('systems_type', t)} className={`chip ${formData.systems_type === t ? 'active' : ''}`}>{t}</button>
+                                ))}
                             </div>
-                            <div>
-                                <label style={labelStyle}>Consistency Rate</label>
-                                <select value={formData.consistency_rate} onChange={e => updateField('consistency_rate', e.target.value)} style={inputStyle}>
-                                    <option value="">How repetitive?</option>
-                                    <option>Highly Repetitive (90%+)</option>
-                                    <option>Mostly Repetitive (70-90%)</option>
-                                    <option>Variable (50-70%)</option>
-                                    <option>Ad-hoc (Under 50%)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>System Count</label>
-                                <select value={formData.systems_count} onChange={e => updateField('systems_count', e.target.value)} style={inputStyle}>
-                                    <option value="">Number of tools...</option>
-                                    <option>1 system</option>
-                                    <option>2-3 systems</option>
-                                    <option>4-6 systems</option>
-                                    <option>7+ systems</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Infrastructure Type</label>
-                                <select value={formData.systems_type} onChange={e => updateField('systems_type', e.target.value)} style={inputStyle}>
-                                    <option value="">Select type...</option>
-                                    <option>All Cloud / SaaS</option>
-                                    <option>Mixed Cloud & Legacy</option>
-                                    <option>Mostly Legacy / Desktop</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Process Importance</label>
-                                <select value={formData.importance} onChange={e => updateField('importance', e.target.value)} style={inputStyle}>
-                                    <option value="">Select priority...</option>
-                                    <option>Critical (Operational Necessity)</option>
-                                    <option>High (Daily dependency)</option>
-                                    <option>Medium (Helpful but not vital)</option>
-                                    <option>Low (Occasional usage)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Explainability / Logic</label>
-                                <select value={formData.explainability} onChange={e => updateField('explainability', e.target.value)} style={inputStyle}>
-                                    <option value="">Select complexity...</option>
-                                    <option>Simple Rules (IF/THEN)</option>
-                                    <option>Moderate (Some judgment)</option>
-                                    <option>Complex (Expert judgment required)</option>
-                                    <option>Creative / Ad-hoc</option>
-                                </select>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Active Comm Channels</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                    {['Email', 'Slack/Teams', 'Internal Portal'].map(ch => (
-                                        <div
-                                            key={ch}
-                                            onClick={() => toggleArrayField('comm_channels', ch)}
-                                            style={{
-                                                padding: '0.75rem',
-                                                borderRadius: '8px',
-                                                border: formData.comm_channels.includes(ch) ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                                background: formData.comm_channels.includes(ch) ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8125rem',
-                                                fontWeight: '600'
-                                            }}
-                                        >
-                                            {ch}
-                                        </div>
-                                    ))}
-                                </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Anticipated Integration Method</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {['API', 'DB Access', 'RPA', 'Manual'].map(m => (
+                                    <button key={m} onClick={() => updateField('integration_method', m)} className={`chip ${formData.integration_method === m ? 'active' : ''}`}>{m}</button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -353,27 +191,8 @@ const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
             case 5:
                 return (
                     <div className="animate-fade-in-up">
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em' }}>Final <span className="gradient-text">Review</span></h2>
-                            <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Review your information before submission.</p>
-                        </div>
-                        <div className="glass" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.875rem' }}>
-                                <div><span style={{ color: 'var(--text-secondary)' }}>Process:</span> <br /> <strong>{formData.name || '-'}</strong></div>
-                                <div><span style={{ color: 'var(--text-secondary)' }}>Functional Area:</span> <br /> <strong>{formData.team_activity || '-'}</strong></div>
-                                <div><span style={{ color: 'var(--text-secondary)' }}>Scale:</span> <br /> <strong>{formData.team_size} people</strong></div>
-                                <div><span style={{ color: 'var(--text-secondary)' }}>Monthly Volume:</span> <br /> <strong>{formData.monthly_volume}</strong></div>
-                            </div>
-                        </div>
-                        <div style={{ marginTop: '1.5rem' }}>
-                            <label style={labelStyle}>Additional Notes</label>
-                            <textarea
-                                value={formData.notes}
-                                onChange={e => updateField('notes', e.target.value)}
-                                placeholder="Any specific requirements or edge cases?"
-                                style={{ ...inputStyle, height: '100px', resize: 'none' }}
-                            />
-                        </div>
+                        <label className="form-label">Summary & Final Notes</label>
+                        <textarea className="form-input" style={{ height: '120px' }} value={formData.notes} onChange={e => updateField('notes', e.target.value)} placeholder="Add any final context or special requirements..." />
                     </div>
                 );
             default: return null;
@@ -381,52 +200,29 @@ const ProcessSubmissionForm = ({ onSubmit, onCancel }) => {
     };
 
     return (
-        <div style={{ paddingTop: '100px', paddingBottom: '100px', maxWidth: '700px', margin: '0 auto' }}>
-            {/* Steps Progress */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', position: 'relative', padding: '0 1rem' }}>
-                <div style={{ position: 'absolute', top: '15px', left: '10%', right: '10%', height: '2px', background: 'var(--border-color)', zIndex: 0 }} />
-                <div style={{ position: 'absolute', top: '15px', left: '10%', width: `${((step - 1) / 4) * 80}%`, height: '2px', background: 'var(--primary-color)', zIndex: 0, transition: 'width 0.3s' }} />
-                {stepInfo.map((s, i) => (
-                    <div key={i} style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            background: step > i + 1 ? 'var(--primary-color)' : (step === i + 1 ? 'white' : 'var(--surface-color)'),
-                            border: `2px solid ${step >= i + 1 ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                            color: step > i + 1 ? 'white' : (step === i + 1 ? 'var(--primary-color)' : 'var(--text-secondary)'),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '0.875rem'
-                        }}>
-                            {step > i + 1 ? '✓' : i + 1}
-                        </div>
-                        <span style={{ fontSize: '0.625rem', fontWeight: '800', textTransform: 'uppercase', marginTop: '0.5rem', display: 'block', color: step >= i + 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{s.title}</span>
-                    </div>
-                ))}
+        <div style={{ maxWidth: '600px', margin: '0 auto', paddingTop: '50px' }}>
+            <div style={{ marginBottom: '2rem' }}>
+                <h2 style={{ fontSize: '2rem' }}>Step {step} <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>of 5</span></h2>
             </div>
 
-            <div className="card" style={{ padding: '3rem' }}>
+            <div className="card" style={{ padding: '2rem' }}>
                 {renderStep()}
 
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: '3rem',
-                    paddingTop: '2rem',
-                    borderTop: '1px solid var(--border-color)'
-                }}>
-                    <button onClick={step === 1 ? onCancel : handleBack} className="btn-secondary" style={{ padding: '0.75rem 1.5rem' }}>
-                        {step === 1 ? 'Cancel' : 'Back'}
-                    </button>
-                    <button
-                        className="btn-primary"
-                        onClick={step === 5 ? () => onSubmit(formData) : handleNext}
-                        style={{ padding: '0.75rem 2rem' }}
-                    >
-                        {step === 5 ? 'Submit for Audit' : 'Continue'}
+                <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                    <button className="btn-secondary" onClick={step === 1 ? onCancel : handleBack}>{step === 1 ? 'Cancel' : 'Back'}</button>
+                    <button className="btn-primary" onClick={step === 5 ? () => {
+                        const finalData = {
+                            ...formData,
+                            potential_value: totals.total,
+                            impact: {
+                                financial: [{ id: 'f1', name: 'Labor Savings', value: totals.labor, type: 'labor' }, { id: 'f2', name: 'Error Reduction', value: totals.error, type: 'error' }],
+                                efficiency: [],
+                                accuracy: []
+                            }
+                        };
+                        onSubmit(finalData);
+                    } : () => setStep(step + 1)}>
+                        {step === 5 ? 'Submit Audit' : 'Next'}
                     </button>
                 </div>
             </div>

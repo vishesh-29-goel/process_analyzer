@@ -120,19 +120,21 @@ function App() {
   };
 
   const handleProcessSubmit = async (data) => {
-    if (!user) return;
+    if (!user) {
+      alert('Please log in to submit a process.');
+      return;
+    }
 
-    // Map 'notes' from form to 'description' for backend
+    // Use data as-is but ensure mandatory fields
     const newProcess = {
       ...data,
-      description: data.notes || '',
       company: user.company_name || user.company || 'Acme Corp',
-      user_id: user.id || 'anonymous',
+      user_id: user.id,
       status: 'New',
       recommendation: '-',
-      impact: { financial: [], efficiency: [], accuracy: [] },
-      scoring: { fit: 0, complexity: 0, value: 0 },
-      systems: []
+      // Don't overwrite impact if it's already there (from new form)
+      impact: data.impact || { financial: [], efficiency: [], accuracy: [] },
+      systems_detail: data.systems_detail || [],
     };
 
     try {
@@ -180,8 +182,8 @@ function App() {
 
       {view === 'landing' && (
         <Landing
-          onStart={() => setView('login')}
-          onAdminLogin={() => setView('login')}
+          onStart={() => { setIsAdminLogin(false); setView('login'); }}
+          onAdminLogin={() => { setIsAdminLogin(true); setView('login'); }}
         />
       )}
 
@@ -206,21 +208,16 @@ function App() {
       {view === 'customer-dashboard' && (
         <CustomerDashboard
           processes={processes.filter(p => p.user_id === user?.id || user?.role === 'admin')}
-          onNewProcess={() => setView('submission-wizard')}
+          onNewProcess={() => setView('submission')}
           onViewProcess={handleViewProcess}
         />
       )}
 
-      {view === 'submission-wizard' && (
-        <ProcessSubmissionForm onSubmit={handleProcessSubmit} onCancel={() => setView('customer-dashboard')} />
+      {view === 'submission' && (
+        <ProcessSubmissionForm API_URL={API_URL} onSubmit={handleProcessSubmit} onCancel={() => setView('customer-dashboard')} />
       )}
 
-      {view === 'admin-dashboard' && (
-        <AdminDashboard
-          processes={processes}
-          onViewProcess={handleViewProcess}
-        />
-      )}
+      {view === 'admin-dashboard' && <AdminDashboard API_URL={API_URL} processes={processes} onViewProcess={(p) => { setSelectedProcess(p); setView('admin-detail'); }} />}
 
       {view === 'admin-detail' && (
         <ProcessDetail

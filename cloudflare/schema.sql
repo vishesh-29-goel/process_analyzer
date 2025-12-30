@@ -61,3 +61,17 @@ CREATE TABLE IF NOT EXISTS processes (
   user_id TEXT,
   FOREIGN KEY (user_id) REFERENCES profiles(id)
 );
+
+-- Settings Table (for Admin constants)
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  description TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default settings
+INSERT OR IGNORE INTO settings (key, value, description) VALUES 
+('hourly_rate', '45', 'Default hourly rate for labor savings ($)'),
+('error_cost', '150', 'Average cost of a manual error ($)'),
+('currency_symbol', '$', 'Preferred currency for all displays');

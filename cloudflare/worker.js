@@ -117,8 +117,8 @@ export default {
                         automation_goals, challenges, bottleneck_effect, importance,
                         documentation_status, explainability, consistency_rate,
                         systems_count, systems_type, comm_channels,
-                        status, user_id, impact, systems_detail
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?, ?)
+                        status, user_id, impact, systems_detail, potential_value
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?, ?, ?)
                 `).bind(
                     id,
                     body.name,
@@ -143,7 +143,8 @@ export default {
                     JSON.stringify(body.comm_channels || []),
                     targetUserId,
                     JSON.stringify(body.impact || { financial: [], efficiency: [], accuracy: [] }),
-                    JSON.stringify(body.systems_detail || [])
+                    JSON.stringify(body.systems_detail || []),
+                    body.potential_value || 0
                 ).run();
                 return Response.json({ success: true, id }, { headers: corsHeaders });
             }
@@ -186,17 +187,23 @@ export default {
                 return Response.json({ success: true }, { headers: corsHeaders });
             }
 
-            // --- ADMIN MANAGEMENT ---
-            if (path.startsWith('/api/admin/promote/') && method === 'PUT') {
-                const targetId = path.split('/').pop();
-                const { role } = await request.json();
+            // --- SETTINGS ENDPOINTS ---
+            if (path === '/api/settings' && method === 'GET') {
+                const { results } = await env.DB.prepare("SELECT * FROM settings").all();
+                const settings = results.reduce((acc, row) => {
+                    acc[row.key] = row.value;
+                    return acc;
+                }, {});
+                return Response.json(settings, { headers: corsHeaders });
+            }
 
-                // Only existing admins can promote others
+            if (path === '/api/settings' && method === 'POST') {
                 if (userRole !== 'admin') {
                     return Response.json({ error: 'Unauthorized' }, { status: 403, headers: corsHeaders });
                 }
-
-                await env.DB.prepare("UPDATE profiles SET role = ? WHERE id = ?").bind(role, targetId).run();
+                const body = await request.json(); // { key, value }
+                await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                    .bind(body.key, body.value.toString()).run();
                 return Response.json({ success: true }, { headers: corsHeaders });
             }
 

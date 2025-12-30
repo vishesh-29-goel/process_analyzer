@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 
-const AdminDashboard = ({ processes, onViewProcess }) => {
+const AdminDashboard = ({ API_URL, processes, onViewProcess }) => {
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'matrix'
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState({
+        hourly_rate: '45',
+        error_cost: '150',
+        currency_symbol: '$'
+    });
+
     const [filters, setFilters] = useState({
         company: 'All Companies',
         industry: 'All Industries',
@@ -11,11 +19,27 @@ const AdminDashboard = ({ processes, onViewProcess }) => {
         search: ''
     });
 
+    React.useEffect(() => {
+        fetch(`${API_URL}/settings`)
+            .then(res => res.json())
+            .then(data => setSettings(prev => ({ ...prev, ...data })))
+            .catch(err => console.error('Settings fetch failed', err));
+    }, [API_URL]);
+
+    const updateSetting = async (key, val) => {
+        setSettings(prev => ({ ...prev, [key]: val }));
+        await fetch(`${API_URL}/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-User-Role': 'admin' },
+            body: JSON.stringify({ key, value: val })
+        });
+    };
+
     const stats = {
-        total: processes.length,
-        new: processes.filter(p => p.status === 'New').length,
-        pursue: processes.filter(p => p.action_signal === 'Pursue').length,
-        pipeline: processes.reduce((acc, p) => {
+        total: processes?.length || 0,
+        new: processes?.filter(p => p.status === 'New').length || 0,
+        pursue: processes?.filter(p => p.action_signal === 'Pursue').length || 0,
+        pipeline: (processes || []).reduce((acc, p) => {
             if (p.action_signal === 'Pursue' || p.action_signal === 'Discovery') {
                 return acc + (parseFloat(p.potential_value) || 0);
             }
@@ -73,7 +97,72 @@ const AdminDashboard = ({ processes, onViewProcess }) => {
                             Advanced qualification and pipeline management.
                         </p>
                     </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div className="glass" style={{ display: 'flex', padding: '0.25rem', borderRadius: '10px' }}>
+                            <button
+                                onClick={() => setViewMode('table')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: viewMode === 'table' ? 'var(--primary-color)' : 'transparent',
+                                    color: viewMode === 'table' ? 'white' : 'var(--text-secondary)',
+                                    fontWeight: '700',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                📋 Table
+                            </button>
+                            <button
+                                onClick={() => setViewMode('matrix')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: viewMode === 'matrix' ? 'var(--primary-color)' : 'transparent',
+                                    color: viewMode === 'matrix' ? 'white' : 'var(--text-secondary)',
+                                    fontWeight: '700',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                📊 Matrix
+                            </button>
+                        </div>
+                        <button className="btn-secondary" onClick={() => setShowSettings(!showSettings)}>
+                            {showSettings ? 'Close Settings' : '⚙️ Calculator Settings'}
+                        </button>
+                    </div>
                 </div>
+
+                {showSettings && (
+                    <div className="glass animate-fade-in-up" style={{ padding: '2rem', marginBottom: '3rem', borderRadius: '15px' }}>
+                        <h3 style={{ marginBottom: '1.5rem' }}>Calculator Constants</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Hourly Labor Rate</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span>{settings.currency_symbol}</span>
+                                    <input className="form-input" type="number" value={settings.hourly_rate} onChange={e => updateSetting('hourly_rate', e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Cost per Error</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span>{settings.currency_symbol}</span>
+                                    <input className="form-input" type="number" value={settings.error_cost} onChange={e => updateSetting('error_cost', e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Currency Symbol</label>
+                                <input className="form-input" value={settings.currency_symbol} onChange={e => updateSetting('currency_symbol', e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
                     {[
@@ -165,75 +254,147 @@ const AdminDashboard = ({ processes, onViewProcess }) => {
                     </div>
                 </div>
 
-                <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ background: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)' }}>
-                                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Process & Company</th>
-                                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Industry</th>
-                                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Scores (V/F)</th>
-                                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Action Signal</th>
-                                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
-                                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredProcesses.map((proc) => (
-                                    <tr key={proc.id} className="table-row" style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => onViewProcess(proc)}>
-                                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                                            <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{proc.name}</div>
-                                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{proc.company}</div>
-                                        </td>
-                                        <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
-                                            {proc.industry || '-'}
-                                        </td>
-                                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                                <ScoreTag score={proc.value_score} label="V" />
-                                                <ScoreTag score={proc.feasibility_score} label="F" />
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                                            {proc.action_signal ? (
-                                                <span style={{
-                                                    padding: '0.25rem 0.625rem',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: '700',
-                                                    background: proc.action_signal === 'Pursue' ? '#dcfce7' : proc.action_signal === 'Discovery' ? '#dbeafe' : '#f1f5f9',
-                                                    color: proc.action_signal === 'Pursue' ? '#166534' : proc.action_signal === 'Discovery' ? '#1e40af' : '#475569'
-                                                }}>
-                                                    {proc.action_signal.toUpperCase()}
-                                                </span>
-                                            ) : '-'}
-                                        </td>
-                                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>
-                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: proc.status === 'New' ? '#2563eb' : '#94a3b8' }} />
-                                                {proc.status}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                            <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>Review</button>
-                                        </td>
+                {viewMode === 'table' ? (
+                    <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ background: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)' }}>
+                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Process & Company</th>
+                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Industry</th>
+                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Scores (V/F)</th>
+                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Action Signal</th>
+                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
+                                        <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}></th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {filteredProcesses.length === 0 && (
-                        <div style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            No processes match your current filters.
+                                </thead>
+                                <tbody>
+                                    {filteredProcesses.map((proc) => (
+                                        <tr key={proc.id} className="table-row" style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => onViewProcess(proc)}>
+                                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{proc.name}</div>
+                                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{proc.company}</div>
+                                            </td>
+                                            <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
+                                                {proc.industry || '-'}
+                                            </td>
+                                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                    <ScoreTag score={proc.value_score} label="V" />
+                                                    <ScoreTag score={proc.feasibility_score} label="F" />
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                {proc.action_signal ? (
+                                                    <span style={{
+                                                        padding: '0.25rem 0.625rem',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '700',
+                                                        background: proc.action_signal === 'Pursue' ? '#dcfce7' : proc.action_signal === 'Discovery' ? '#dbeafe' : '#f1f5f9',
+                                                        color: proc.action_signal === 'Pursue' ? '#166534' : proc.action_signal === 'Discovery' ? '#1e40af' : '#475569'
+                                                    }}>
+                                                        {proc.action_signal.toUpperCase()}
+                                                    </span>
+                                                ) : '-'}
+                                            </td>
+                                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>
+                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: proc.status === 'New' ? '#2563eb' : '#94a3b8' }} />
+                                                    {proc.status}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                                <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>Review</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
-                </div>
+                        {filteredProcesses.length === 0 && (
+                            <div style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                No processes match your current filters.
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <MatrixView processes={filteredProcesses} onViewProcess={onViewProcess} />
+                )}
             </div>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .table-row:hover { background: rgba(37, 99, 235, 0.03); }
             `}} />
+        </div>
+    );
+};
+
+const MatrixView = ({ processes, onViewProcess }) => {
+    const quadrants = [
+        { id: 'strategic', title: 'Strategic Initiatives', label: 'High Value / Low Feasibility', icon: '🎯', color: '#eff6ff', textColor: '#1e40af', v: ['High', 'Medium'], f: ['Low'] },
+        { id: 'pursue', title: 'Pursue Immediately', label: 'High Value / High Feasibility', icon: '🚀', color: '#ecfdf5', textColor: '#065f46', v: ['High', 'Medium'], f: ['High', 'Medium'] },
+        { id: 'avoid', title: 'Deprioritize / Pass', label: 'Low Value / Low Feasibility', icon: '⚠️', color: '#f8fafc', textColor: '#475569', v: ['Low'], f: ['Low'] },
+        { id: 'tactical', title: 'Quick Wins', label: 'Low Value / High Feasibility', icon: '🛠️', color: '#fffbeb', textColor: '#92400e', v: ['Low'], f: ['High', 'Medium'] },
+    ];
+
+    const getQuadrantItems = (quad) => {
+        return processes.filter(p => {
+            const vMatch = quad.v.includes(p.value_score);
+            const fMatch = quad.f.includes(p.feasibility_score);
+            return vMatch && fMatch;
+        });
+    };
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            {quadrants.map(quad => {
+                const items = getQuadrantItems(quad);
+                return (
+                    <div key={quad.id} className="card" style={{ padding: '1.5rem', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ padding: '0.4rem', borderRadius: '8px', background: quad.color, fontSize: '1.25rem' }}>{quad.icon}</span>
+                                    {quad.title}
+                                </h3>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', marginTop: '0.25rem' }}>{quad.label}</p>
+                            </div>
+                            <span className="badge" style={{ background: quad.color, color: quad.textColor }}>{items.length}</span>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {items.map(p => (
+                                <div
+                                    key={p.id}
+                                    onClick={() => onViewProcess(p)}
+                                    className="glass"
+                                    style={{
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '10px',
+                                        cursor: 'pointer',
+                                        border: '1px solid var(--border-color)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                                >
+                                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>{p.name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                                        <span>{p.company}</span>
+                                        <span style={{ fontWeight: '800', color: 'var(--primary-color)' }}>${(parseFloat(p.potential_value) || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {items.length === 0 && (
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8125rem', opacity: 0.5, fontStyle: 'italic' }}>
+                                    No candidates in this quadrant
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 };

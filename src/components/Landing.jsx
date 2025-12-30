@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Landing = ({ onStart }) => {
+const Landing = ({ onStart, onAdminLogin }) => {
     return (
         <div style={{
             minHeight: '100vh',
@@ -146,7 +146,15 @@ const Landing = ({ onStart }) => {
                 zIndex: 1
             }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>© 2025 Pace. Build for efficiency.</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <span>© 2025 Pace. Build for efficiency.</span>
+                        <button
+                            onClick={onAdminLogin}
+                            style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer', padding: 0 }}
+                        >
+                            Log in as Admin
+                        </button>
+                    </div>
                     <div style={{ display: 'flex', gap: '2rem' }}>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>
