@@ -9,7 +9,3 @@ database_id = "eaf1dcbc-d89b-4282-b152-878cf5a23e10"
 
 [observability]
 enabled = true
-
-[dev]
-remote = true
-port = 8888
