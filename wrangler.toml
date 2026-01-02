@@ -1,6 +1,7 @@
 name = "processanalyzer"
 main = "cloudflare/worker.js"
 compatibility_date = "2024-12-24"
+account_id = "75c84f002a80b7bd7c0678c35a0f85e6"
 
 [[d1_databases]]
 binding = "DB"
